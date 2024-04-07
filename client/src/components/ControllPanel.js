@@ -40,6 +40,9 @@ const ControllPanel = () => {
             alert(`received value for key '${key}': ${res.data.data}`);
           }
         })
+        .catch(() => {
+          alert(`key: ${key} does not exists!`)
+        })
     } else if (operation == "DELETE") {
       axios
         .delete(`http://localhost:8080/cache?key=${key}`)

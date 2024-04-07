@@ -2,7 +2,6 @@ package utils
 
 import (
 	"encoding/json"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -115,18 +114,11 @@ func (lruCache *LRUCache) Delete(key string) bool {
 }
 
 func (lruCache *LRUCache) ToArray() []map[string]string {
-	fmt.Printf("here 1")
-	// if lruCache.head.key == "" {
-	// 	return []cacheElement{}
-	// }
-	fmt.Printf("here 2")
 	arr := []map[string]string{}
 	curr := lruCache.head.next
 	for curr != lruCache.tail {
-		fmt.Printf("cache el key: %s value %s \n", curr.key, curr.value)
 		arr = append(arr, map[string]string{curr.key: curr.value})
 		curr = curr.next
 	}
-	fmt.Printf("here 3")
 	return arr
 }

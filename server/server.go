@@ -107,16 +107,17 @@ func (server *Server) cacheHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // Allow requests from any origin
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	
 	if r.URL.Path != "/cache" {
 		http.Error(w, "404 not found.", http.StatusNotFound)
 		return
 	}
 
-	if r.Method == "OPTIONS" {
+	if r.Method == "OPTIONS" { // for pre-flight requests
 		return
 	} else if r.Method == "GET" {
 			key := r.URL.Query().Get("key")
-			fmt.Printf("key: %s", key)
+			// fmt.Printf("key: %s", key)
 			if value, ok := server.cache.Get(key); ok {
 				str, err := json.Marshal(server.cache.ToArray())
 				if err != nil {
@@ -140,7 +141,9 @@ func (server *Server) cacheHandler(w http.ResponseWriter, r *http.Request) {
 				w.Write(jsonResponse)
 				return;
 			}
-			fmt.Fprintf(w, "not found!")
+			w.Header().Set("Content-Type", "application/json")
+
+			w.WriteHeader(http.StatusNotFound)
 	} else if r.Method == "PUT" {
 		var requestBody map[string]string
 		err := json.NewDecoder(r.Body).Decode(&requestBody)
@@ -158,27 +161,30 @@ func (server *Server) cacheHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "500 server error!", http.StatusNotFound)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
 		server.cache.Put(key, value, expSec, func(msg string) {server.broadcast <- Message{Content: msg}});
 		str, err := json.Marshal(server.cache.ToArray())
-			if err != nil {
-				return
-			}
-			server.broadcast <- Message{Content: string(str)}
-			fmt.Printf("cache: %s", string(str))
+		if err != nil {
+			w.WriteHeader(500)
+			return
+		}
+		server.broadcast <- Message{Content: string(str)}
+		w.WriteHeader(http.StatusOK)
+			// fmt.Printf("cache: %s", string(str))
 	} else if r.Method == "DELETE" {
 		key := r.URL.Query().Get("key")
-		fmt.Printf("key: %s", key)
+		// fmt.Printf("key: %s", key)
 		if ok := server.cache.Delete(key); ok {
 			// fmt.Fprintf(w, "key: %s deleted", key)
 			str, err := json.Marshal(server.cache.ToArray())
 			if err != nil {
+				w.WriteHeader(500)
 				return
 			}
 			server.broadcast <- Message{Content: string(str)}
 			return;
 		}
-		fmt.Fprintf(w, "not found!")
+		w.WriteHeader(http.StatusOK)
+		// fmt.Fprintf(w, "not found!")
 	} else {
 		http.Error(w, "Method is not supported.", http.StatusNotFound)
 	}
@@ -188,22 +194,6 @@ func main() {
 	// init cache
 	server := NewServer()
 	
-	
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		// Set CORS headers
-		w.Header().Set("Access-Control-Allow-Origin", "*") // Allow requests from any origin
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
-		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-
-		// Handle preflight requests
-		if req.Method == "OPTIONS" {
-				return
-		}
-
-		// Your application logic here...
-		w.Write([]byte("Hello, CORS enabled!"))
-	}
-	http.HandleFunc("/", handler)
 	http.HandleFunc("/ws", server.handleConnections)
 	http.HandleFunc("/cache", server.cacheHandler)
 	
