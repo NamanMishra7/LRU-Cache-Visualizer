@@ -30,3 +30,7 @@ go run server.go
 
 in the client you can add, get or delete keys, also key will be deleted after duration sopecified experies.
 client makes `socket` connection with the server to get updates on cache.
+
+## Preview
+
+![alt text](./screenshot/preview.PNG)
