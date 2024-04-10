@@ -13,6 +13,8 @@ type Message struct {
 type ListNode struct {
 	key string
 	value string
+	exp int
+	time time.Time
 	prev *ListNode
 	next *ListNode
 }
@@ -75,7 +77,7 @@ func (lruCache *LRUCache) Put(key string, value string, expSec int, fn func(msg 
 
 	} else {
 
-			newNode := &ListNode{key: key, value: value}
+			newNode := &ListNode{key: key, value: value, exp: expSec, time: time.Now()}
 			lruCache.cache[key] = newNode
 			lruCache.addToHead(newNode)
 
@@ -85,20 +87,46 @@ func (lruCache *LRUCache) Put(key string, value string, expSec int, fn func(msg 
 			// 		delete(lruCache.cache, tail.key)
 			// }
 
-			time.AfterFunc(time.Duration(expSec)*time.Second, func() {
-				lruCache.mutex.Lock()
-				defer lruCache.mutex.Unlock()
-				if node, ok := lruCache.cache[key]; ok && node == newNode {
-						lruCache.removeNode(newNode)
-						delete(lruCache.cache, newNode.key)
-						str, err := json.Marshal(lruCache.ToArray())
-						if err != nil {
-							return
-						}
-						fn(string(str))
-				}
-		})
+			// go func () {
+			// 	lruCache.mutex.Lock()
+			// 	defer lruCache.mutex.Unlock()
+			// 	if node, ok := lruCache.cache[key]; ok {
+			// 		lruCache.removeNode(node)
+			// 		delete(lruCache.cache, node.key)
+			// 	}
+			// }()
 
+			// time.AfterFunc(time.Duration(expSec)*time.Second, func() {
+			// 	lruCache.mutex.Lock()
+			// 	defer lruCache.mutex.Unlock()
+			// 	if node, ok := lruCache.cache[key]; ok && node == newNode {
+			// 			lruCache.removeNode(newNode)
+			// 			delete(lruCache.cache, newNode.key)
+			// 			str, err := json.Marshal(lruCache.ToArray())
+			// 			if err != nil {
+			// 				return
+			// 			}
+			// 			fn(string(str))
+			// 	}
+			// })
+
+	}
+}
+
+func (lruCache *LRUCache) CheckForExp(fn func(str string)) {
+	for key, elem := range lruCache.cache {
+		diff := time.Since(elem.time)
+		// time.Since(elem.time)
+		if (diff >= time.Duration(elem.exp) * time.Second) {
+			lruCache.removeNode(elem)
+			delete(lruCache.cache, key)
+			// fmt.Printf("time: %v and elapsed: %v and key: %v", elem.time, diff, key)
+			str, err := json.Marshal(lruCache.ToArray())
+			if err != nil {
+				continue
+			}
+			fn(string(str))
+		}
 	}
 }
 

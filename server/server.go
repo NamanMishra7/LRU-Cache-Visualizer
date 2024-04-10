@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 
@@ -193,6 +195,21 @@ func (server *Server) cacheHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	// init cache
 	server := NewServer()
+
+	var mu sync.Mutex
+
+	go func() {
+		for {
+			mu.Lock()
+			// evict
+			server.cache.CheckForExp(func (str string) {
+				server.broadcast <- Message{Content: string(str)}
+			})
+			mu.Unlock()
+			time.Sleep(1 * time.Second)
+		}
+	}()
+
 	
 	http.HandleFunc("/ws", server.handleConnections)
 	http.HandleFunc("/cache", server.cacheHandler)
