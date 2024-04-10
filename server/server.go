@@ -68,6 +68,8 @@ func (server *Server) handleConnections(w http.ResponseWriter, r *http.Request) 
 
 	// Register our new client
 	server.clients[ws] = true
+
+	// send current cache
 	str, err := json.Marshal(server.cache.ToArray())
 	if err != nil {
 		return
@@ -76,7 +78,7 @@ func (server *Server) handleConnections(w http.ResponseWriter, r *http.Request) 
 
 	for {
 			var msg Message
-			// Read in a new message as JSON and map it to a Message object
+			// Read in a new message from the user as JSON and map it to a Message object
 			err := ws.ReadJSON(&msg)
 			if err != nil {
 					log.Printf("error: %v", err)
